@@ -1,10 +1,12 @@
 ﻿using HospitalCrud.Data;
-using HospitalCrud.Mappers;
+using HospitalCrud.JSONConverters;
 using HospitalCrud.Repositories;
 using HospitalCrud.Services;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
+using System.Text.Json.Serialization;
 
 namespace HospitalCrud
 {
@@ -21,32 +23,67 @@ namespace HospitalCrud
 		public WebApplication ConfigureAndBuildApplication()
 		{
 			var builder = WebApplication.CreateBuilder();
-			var appSettings = BuildConfigurationFile(builder);
+			var appSettings = LoadAppSettings(builder.Environment);
+            var services = builder.Services;
 
-			EnableApiControllersAndViews(builder);
-			RegisterServicesForDependencyInjection(builder);
-			RegisterDatabaseContext(builder, appSettings);
-			SetupSwaggerGenerator(builder);
+            EnableApiControllersAndViews(services);
+			ConfigureApiBehaviorOptions(services);
+			RegisterServicesForDependencyInjection(services);
+			RegisterDatabaseContext(services, appSettings);
+			SetupSwaggerGenerator(services);
 
 			return BuildWebApplication(builder);
 		}
 
-		private void EnableApiControllersAndViews(WebApplicationBuilder builder)
+		private void EnableApiControllersAndViews(IServiceCollection services)
 		{
-			builder.Services.AddControllers();
-			builder.Services.AddControllersWithViews();
+            services.AddControllersWithViews();
+			services.AddControllers()
+					.AddJsonOptions(ConfigureJsonOptions);
+        }
+
+		private void ConfigureJsonOptions(JsonOptions options)
+		{
+            options.JsonSerializerOptions.Converters.Add(new DateTimeConverter());
+            options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+        }
+
+        private void ConfigureApiBehaviorOptions(IServiceCollection services)
+		{
+            services.Configure<ApiBehaviorOptions>(options =>
+            {
+				// This configures the API to include a list of errors found in the model
+				// whenever it fails to serialize the JSON coming in the request
+				options.InvalidModelStateResponseFactory = context =>
+				{
+                    var errors =
+					(
+                        from state in context.ModelState.Values
+                        from error in state.Errors
+                        select error.ErrorMessage
+
+                    ).ToList();
+
+                    var response = new
+                    {
+                        error = "O objeto JSON é inválido",
+                        details = errors
+                    };
+
+                    return new BadRequestObjectResult(response);
+                };
+            });
+        }
+
+		private void RegisterServicesForDependencyInjection(IServiceCollection services)
+		{
+			services.AddTransient<IPatientRepository, PatientRepository>();
+			services.AddTransient<IPatientService, PatientService>();
 		}
 
-		private void RegisterServicesForDependencyInjection(WebApplicationBuilder builder)
+		private void RegisterDatabaseContext(IServiceCollection services, IConfigurationRoot appSetings)
 		{
-			builder.Services.AddTransient<IPatientRepository, PatientRepository>();
-			builder.Services.AddTransient<IPatientService, PatientService>();
-			builder.Services.AddTransient<IPatientMapper, PatientMapper>();
-		}
-
-		private void RegisterDatabaseContext(WebApplicationBuilder builder, IConfigurationRoot appSetings)
-		{
-			builder.Services.AddDbContext<DatabaseContext>(options =>
+			services.AddDbContext<DatabaseContext>(options =>
 			{
 				string? connectionString = appSetings.GetConnectionString(ConnectionStringKey);
 
@@ -58,23 +95,24 @@ namespace HospitalCrud
 
 		}
 
-		private IConfigurationRoot BuildConfigurationFile(WebApplicationBuilder builder)
+		private IConfigurationRoot LoadAppSettings(IWebHostEnvironment environment)
 		{
 			return new ConfigurationBuilder()
-				.SetBasePath(builder.Environment.ContentRootPath)
+				.SetBasePath(environment.ContentRootPath)
 				.AddJsonFile(AppSettingsFilename, optional: false, reloadOnChange: true)
 				.Build();
 		}
 
-		private void SetupSwaggerGenerator(WebApplicationBuilder builder)
+		private void SetupSwaggerGenerator(IServiceCollection services)
 		{
-			builder.Services.AddSwaggerGen(c =>
+			services.AddSwaggerGen(setupAction =>
 			{
-				c.SwaggerDoc(ApiVersion, new OpenApiInfo { Title = ApiName, Version = ApiVersion });
+				setupAction.SwaggerDoc(ApiVersion, new OpenApiInfo { Title = ApiName, Version = ApiVersion });
 
 				var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
 				var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-				c.IncludeXmlComments(xmlPath);
+
+				setupAction.IncludeXmlComments(xmlPath);
 			});
 		}
 
@@ -88,9 +126,11 @@ namespace HospitalCrud
 			app.UseStaticFiles();
 			app.UseRouting();
 			app.UseAuthorization();
+
 			app.UseSwagger();
 			app.UseSwaggerUI(ui => 
 				ui.SwaggerEndpoint($"/swagger/{ApiVersion}/swagger.json", $"{ApiName} {ApiVersion}"));
+
 			app.MapControllers();
 			app.MapControllerRoute(
 				name: "default",

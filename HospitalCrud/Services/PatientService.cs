@@ -1,45 +1,49 @@
-﻿using HospitalCrud.Data;
-using HospitalCrud.DTO;
+﻿using HospitalCrud.DTO;
 using HospitalCrud.Exceptions;
-using HospitalCrud.Mappers;
 using HospitalCrud.Model;
 using HospitalCrud.Repositories;
+using HospitalCrud.Util;
+using HospitalCrud.ExtensionMethods;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace HospitalCrud.Services
 {
     public class PatientService : IPatientService
 	{
 		private readonly IPatientRepository patientRepository;
-		private readonly IPatientMapper patientMapper;
 
-		public PatientService(IPatientRepository patientRepository, IPatientMapper patientMapper)
+		public PatientService(IPatientRepository patientRepository)
 		{
 			this.patientRepository = patientRepository;
-			this.patientMapper = patientMapper;
 		}
 
-		public async Task<Patient> AddNewPatient(PatientDTO dto)
+		public async Task<Patient> AddNewPatient(Patient patient)
 		{
-			try
+            try
 			{
-				var patient = patientMapper.MapToPatient(dto);
-				await patientRepository.Add(patient);
+				if (patient.Id.HasValue)
+					throw new InvalidOperationException("Não é permitido informar o id ao cadastrar um novo paciente");
+
+				AssertValidDateOfBirthOrElseExcept(patient.DateOfBirth);
+                patient.DateOfBirth = patient.DateOfBirth.ToUtc();
+
+                await patientRepository.Add(patient);
+
 				return patient;
 			}
 			catch (DbUpdateException ex)
 			{
-				if (ex.InnerException is PostgresException pgEx && pgEx.SqlState == "23505") // 23505: Unique violation error code
-				{
-					if (pgEx.ConstraintName == "IX_Patient_Cpf")
-					{
-						throw new DuplicateCpfException(dto.Cpf);
-					}
-				}
+				if (PostgresExceptionIdentifier.IsUniqueConstraintViolationError(ex, "IX_Patient_Cpf"))
+					throw new DuplicateCpfException(patient.Cpf!);
 
 				throw;
 			}
+		}
+
+		private void AssertValidDateOfBirthOrElseExcept(DateTime? dateOfBirth)
+		{
+			if (!dateOfBirth.IsValidDateOfBirthOrNull())
+				throw new InvalidDateOfBirthException(dateOfBirth);
 		}
 
 		public async Task<ICollection<Patient>> GetAllPatients()
@@ -47,27 +51,33 @@ namespace HospitalCrud.Services
 			return await patientRepository.GetAll();
 		}
 
-		public async Task<ICollection<PatientDTO>> GetAllPatientsDto()
-		{
-			var patients = await GetAllPatients();
-			return patientMapper.MapToPatientDtoCollection(patients);
-		}
-
 		public async Task<Patient> GetPatientById(int id)
 		{
 			return await patientRepository.GetById(id);
 		}
 
-		public async Task<PatientDTO> GetPatientDtoById(int id)
+		public async Task<Patient> GetPatientByCpf(string cpf)
 		{
-			var patient = await GetPatientById(id);
-			return patientMapper.MapToPatientDto(patient);
+			return await patientRepository.GetPatientByCpf(cpf);
 		}
 
-		public async Task<PatientDTO> GetPatientDtoByCpf(string cpf)
+		public async Task UpdatePatient(Patient newData)
 		{
-			var patient = await patientRepository.GetPatientByCpf(cpf);
-			return patientMapper.MapToPatientDto(patient);
+			if (!newData.Id.HasValue)
+				throw new MissingIdException();
+
+			var currentData = await GetPatientById(newData.Id.Value);
+
+			currentData.FirstName = newData.FirstName;
+			currentData.LastName = newData.LastName;
+			currentData.Phone = newData.Phone;
+			currentData.Email = newData.Email;
+			currentData.Cpf = newData.Cpf;
+
+			AssertValidDateOfBirthOrElseExcept(newData.DateOfBirth);
+			currentData.DateOfBirth = newData.DateOfBirth.ToUtc();
+
+			await patientRepository.Update(currentData);
 		}
 
 		public async Task UpdatePatient(PatientUpdateDTO dto)
@@ -82,12 +92,16 @@ namespace HospitalCrud.Services
 				patient.Phone = dto.Phone;
 			if (dto.Email != null)
 				patient.Email = dto.Email;
-			if (dto.DateOfBirth != null)
-				patient.DateOfBirth = dto.DateOfBirth;
 			if (dto.Cpf != null)
 				patient.Cpf = dto.Cpf;
 
-			await patientRepository.Update(patient);
+            if (dto.DateOfBirth != null)
+            {
+                AssertValidDateOfBirthOrElseExcept(patient.DateOfBirth);
+                patient.DateOfBirth = dto.DateOfBirth.ToUtc();
+            }
+
+            await patientRepository.Update(patient);
 		}
 
 		public async Task DeletePatientById(int id)

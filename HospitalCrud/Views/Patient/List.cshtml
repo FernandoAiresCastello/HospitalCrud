@@ -1,0 +1,64 @@
+﻿@{
+	ViewData["Title"] = "Lista de Pacientes";
+}
+
+@model ICollection<Patient>
+
+@section title {
+	<h3>@ViewData["Title"]</h3>
+}
+
+@if (Model != null && Model.Count > 0)
+{
+	<table class="table table-striped">
+		<thead>
+			<tr>
+				<th>Id</th>
+				<th>Nome completo</th>
+				<th>CPF</th>
+				<th>Data de nascimento</th>
+				<th>E-mail</th>
+				<th>Telefone</th>
+
+				<th></th>
+				<th></th>
+			</tr>
+		</thead>
+		<tbody>
+			@foreach (var patient in Model)
+			{
+				<tr>
+					<td>@patient.Id</td>
+					<td>@patient.FullName</td>
+					<td>@patient.Cpf</td>
+					<td>@(patient.DateOfBirth?.ToString("dd/MM/yyyy") ?? null)</td>
+					<td>@patient.Email</td>
+					<td>@patient.Phone</td>
+
+					<td><a class="btn btn-link" asp-controller="patient" asp-action="edit" asp-route-patientId="@patient.Id">Editar</a></td>
+					<td>
+						<a class="btn btn-link" asp-controller="patient" asp-action="delete" asp-route-patientId="@patient.Id"
+						   onclick="return confirmDelete()">Excluir</a>
+					</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+	<br />
+}
+else
+{
+	<p>Nenhum paciente cadastrado.</p>
+}
+
+<a class="btn btn-primary" asp-controller="patient" asp-action="create">
+	Incluir novo paciente
+</a>
+
+@section scripts {
+	<script>
+		function confirmDelete() {
+			return confirm("Tem certeza que deseja excluir este paciente?");
+		}
+	</script>
+}

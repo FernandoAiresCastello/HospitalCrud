@@ -1,5 +1,8 @@
 ﻿namespace HospitalCrud.DTO
 {
+	/// <summary>
+	/// DTO class used by the JSON serializer to hold the data to update for a patient
+	/// </summary>
 	public record PatientUpdateDTO
 	{
 		public required int Id { get; init; }

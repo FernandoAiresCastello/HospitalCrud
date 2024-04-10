@@ -18,5 +18,10 @@ namespace HospitalCrud.Controllers
 		{
 			return View();
 		}
+
+		public IActionResult RedirectToSwaggerUI()
+		{
+            return Redirect("/swagger/index.html");
+        }
 	}
 }

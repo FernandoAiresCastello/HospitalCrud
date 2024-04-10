@@ -1,0 +1,88 @@
+﻿@{
+	ViewData["Title"] = "Editar Paciente";
+}
+
+@model Patient
+
+@section title {
+	<h3>@ViewData["Title"]</h3>
+}
+
+<form method="post" asp-controller="patient" asp-action="edit">
+	<div class="text-danger" asp-validation-summary="All"></div>
+	
+	<input type="hidden" asp-for="Id" />
+
+	<div class="row mb-3">
+		<div class="col-2">
+			<label asp-for="FirstName" class="col-form-label">Nome</label>
+		</div>
+		<div class="col-6">
+			<input type="text" asp-for="FirstName" class="form-control" />
+		</div>
+		<div class="col">
+			<span class="text-danger" asp-validation-for="FirstName"></span>
+		</div>
+	</div>
+
+	<div class="row mb-3">
+		<div class="col-2">
+			<label asp-for="LastName" class="col-form-label">Sobrenome</label>
+		</div>
+		<div class="col-6">
+			<input type="text" asp-for="LastName" class="form-control" />
+		</div>
+		<div class="col">
+			<span class="text-danger" asp-validation-for="LastName"></span>
+		</div>
+	</div>
+
+	<div class="row mb-3">
+		<div class="col-2">
+			<label asp-for="Cpf" class="col-form-label">CPF</label>
+		</div>
+		<div class="col-6">
+			<input type="text" asp-for="Cpf" class="form-control" />
+		</div>
+		<div class="col">
+			<span class="text-danger" asp-validation-for="Cpf"></span>
+		</div>
+	</div>
+
+	<div class="row mb-3">
+		<div class="col-2">
+			<label asp-for="DateOfBirth" class="col-form-label">Data de nascimento</label>
+		</div>
+		<div class="col-6">
+			<input type="text" asp-for="DateOfBirth" class="form-control datepicker" autocomplete="off" />
+		</div>
+	</div>
+
+	<div class="row mb-3">
+		<div class="col-2">
+			<label asp-for="Email" class="col-form-label">E-mail</label>
+		</div>
+		<div class="col-6">
+			<input type="text" asp-for="Email" class="form-control" />
+		</div>
+	</div>
+
+	<div class="row mb-3">
+		<div class="col-2">
+			<label asp-for="Phone" class="col-form-label">Telefone</label>
+		</div>
+		<div class="col-6">
+			<input type="text" asp-for="Phone" class="form-control" />
+		</div>
+	</div>
+
+	<div class="row mb-3">
+		<div class="col-6">
+			<input type="submit" class="btn btn-primary" value="Salvar alterações" />
+			<a href="@Url.Action("List", "Patient")" class="btn btn-outline-primary">Cancelar</a>
+		</div>
+		<div class="col-2">
+		</div>
+	</div>
+
+</form>

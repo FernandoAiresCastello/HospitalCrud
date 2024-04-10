@@ -8,13 +8,12 @@ namespace HospitalCrud.Services
 	/// </summary>
 	public interface IPatientService
 	{
-		Task<Patient> AddNewPatient(PatientDTO dto);
+		Task<Patient> AddNewPatient(Patient patient);
 		Task<ICollection<Patient>> GetAllPatients();
-		Task<ICollection<PatientDTO>> GetAllPatientsDto();
 		Task<Patient> GetPatientById(int id);
-		Task<PatientDTO> GetPatientDtoById(int id);
-		Task<PatientDTO> GetPatientDtoByCpf(string cpf);
+		Task<Patient> GetPatientByCpf(string cpf);
 		Task UpdatePatient(PatientUpdateDTO dto);
+		Task UpdatePatient(Patient patient);
 		Task DeletePatientById(int id);
 	}
 }

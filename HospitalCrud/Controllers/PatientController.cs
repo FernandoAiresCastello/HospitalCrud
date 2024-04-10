@@ -46,7 +46,7 @@ namespace HospitalCrud.Controllers
                 {
                     ModelState.AddModelError("CPF", ex.Message);
                 }
-				catch (InvalidOperationException ex)
+				catch (IdNotAllowed ex)
 				{
 					ModelState.AddModelError("Id", ex.Message);
 				}

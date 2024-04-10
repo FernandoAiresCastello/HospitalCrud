@@ -5,7 +5,6 @@ using HospitalCrud.Repositories;
 using HospitalCrud.Util;
 using HospitalCrud.ExtensionMethods;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 using HospitalCrud.Controllers;
 
 namespace HospitalCrud.Services
@@ -24,8 +23,9 @@ namespace HospitalCrud.Services
             try
 			{
 				if (patient.Id.HasValue)
-					throw new InvalidOperationException("Não é permitido informar o id ao cadastrar um novo paciente");
+					throw new IdNotAllowed();
 
+				patient.Cpf = patient.Cpf.KeepOnlyDigits();
                 patient.DateOfBirth = patient.DateOfBirth.ToUtc();
 
                 await patientRepository.Add(patient);
@@ -44,7 +44,7 @@ namespace HospitalCrud.Services
 			return await patientRepository.GetAll();
 		}
 
-		public async Task<Patient> GetPatientById(int id)
+		public async Task<Patient> GetPatientById(int? id)
 		{
 			return await patientRepository.GetById(id);
 		}
@@ -54,7 +54,7 @@ namespace HospitalCrud.Services
 			return await patientRepository.GetPatientByCpf(cpf);
 		}
 
-		public async Task DeletePatientById(int id)
+		public async Task DeletePatientById(int? id)
 		{
 			await patientRepository.Delete(id);
 		}
@@ -64,10 +64,7 @@ namespace HospitalCrud.Services
 		/// </summary>
 		public async Task UpdatePatientFromView(Patient newData)
 		{
-			if (!newData.Id.HasValue)
-				throw new MissingIdException();
-
-			var currentData = await GetPatientById(newData.Id.Value);
+			var currentData = await GetPatientById(newData.Id);
 
 			currentData.FirstName = newData.FirstName;
 			currentData.LastName = newData.LastName;

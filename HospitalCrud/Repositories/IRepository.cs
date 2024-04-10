@@ -18,12 +18,12 @@
 		/// <summary>Delete an entity</summary>
 		/// <param name="id">The id of the entity to be deleted</param>
 		/// <returns>The asynchronous task to await for</returns>
-		Task Delete(int id);
+		Task Delete(int? id);
 
 		/// <summary>Retrieve an entity by its id</summary>
 		/// <param name="id">The entity with the specified id</param>
 		/// <returns>The asynchronous task to await for, which resolves to the entity object, if found</returns>
-		Task<TEntity> GetById(int id);
+		Task<TEntity> GetById(int? id);
 
 		/// <summary>Retrieve a collection containing all entities</summary>
 		/// <returns>The asynchronous task to await for, which resolves to the collection of all existing entity objects</returns>

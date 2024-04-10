@@ -12,7 +12,7 @@ namespace HospitalCrud.Repositories
 	/// </summary>
     public class PatientRepository : IPatientRepository
     {
-        private readonly DatabaseContext db;
+        private DatabaseContext db;
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="PatientRepository"/> class.
@@ -38,8 +38,11 @@ namespace HospitalCrud.Repositories
 		}
 
 		/// <inheritdoc/>
-		public async Task Delete(int id)
+		public async Task Delete(int? id)
 		{
+			if (!id.HasValue)
+				throw new MissingIdException();
+
 			var patient = await db.Patients.FindAsync(id) ?? 
 				throw new PatientNotFoundException(id);
 
@@ -48,8 +51,11 @@ namespace HospitalCrud.Repositories
 		}
 
 		/// <inheritdoc/>
-		public async Task<Patient> GetById(int id)
+		public async Task<Patient> GetById(int? id)
 		{
+			if (!id.HasValue)
+				throw new MissingIdException();
+
 			return await db.Patients.FindAsync(id) ?? 
 				throw new PatientNotFoundException(id);
 		}

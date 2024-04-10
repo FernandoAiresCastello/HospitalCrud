@@ -12,7 +12,8 @@ namespace HospitalCrud.DTO
 	/// </summary>
 	public record PatientUpdateDTO
 	{
-		public required int Id { get; init; }
+		[Required(ErrorMessage = ValidationMessages.RequiredId)]
+		public int? Id { get; init; } = null;
 
 		[StringLength(50)]
 		public string? FirstName { get; init; }

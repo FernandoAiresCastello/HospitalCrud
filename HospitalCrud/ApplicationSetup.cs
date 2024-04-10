@@ -18,7 +18,7 @@ namespace HospitalCrud
 	/// </summary>
 	public class ApplicationSetup
 	{
-		private readonly string ApiName = "HospitalCrud API";
+		private readonly string ApiName = Constants.ApplicationTitle;
 		private readonly string ApiVersion = "v1";
 		private readonly string AppSettingsFilename = "appsettings.json";
 		private readonly string ConnectionStringKey = "Postgres";
@@ -64,25 +64,19 @@ namespace HospitalCrud
                         from state in context.ModelState.Values
                         from error in state.Errors
                         select error.ErrorMessage
+                    );
 
-                    ).ToList();
-
-                    var response = new
-                    {
-                        error = "O objeto JSON é inválido",
-                        details = errors
-                    };
-
-                    return new BadRequestObjectResult(response);
+                    return new ApiResponseObject(StatusCodes.Status400BadRequest, 
+						ValidationMessages.InvalidJson, errors);
                 };
             });
         }
 
 		private void RegisterServicesForDependencyInjection(IServiceCollection services)
 		{
-			services.AddTransient<IPatientRepository, PatientRepository>();
-			services.AddTransient<IPatientService, PatientService>();
-			services.AddTransient<IExamplesProvider<Patient>, PatientExample>();
+			services.AddSingleton<IPatientRepository, PatientRepository>();
+			services.AddSingleton<IPatientService, PatientService>();
+			services.AddSingleton<IExamplesProvider<Patient>, PatientExample>();
 		}
 
 		private void RegisterDatabaseContext(IServiceCollection services, IConfigurationRoot appSetings)
@@ -95,7 +89,8 @@ namespace HospitalCrud
 					throw new KeyNotFoundException($"Connection string '{ConnectionStringKey}' não encontrada no {AppSettingsFilename}");
 
 				options.UseNpgsql(connectionString);
-			});
+
+			}, ServiceLifetime.Singleton);
 
 		}
 
@@ -118,6 +113,7 @@ namespace HospitalCrud
 
 				setup.IncludeXmlComments(xmlPath);
 				setup.ExampleFilters();
+				setup.EnableAnnotations();
 			});
 
 			services.AddSwaggerExamplesFromAssemblyOf<PatientExample>();

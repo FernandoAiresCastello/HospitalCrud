@@ -10,10 +10,10 @@ namespace HospitalCrud.Services
 	{
 		Task<Patient> AddNewPatient(Patient patient);
 		Task<ICollection<Patient>> GetAllPatients();
-		Task<Patient> GetPatientById(int id);
+		Task<Patient> GetPatientById(int? id);
 		Task<Patient> GetPatientByCpf(string cpf);
 		Task UpdatePatientFromApi(PatientUpdateDTO dto);
 		Task UpdatePatientFromView(Patient patient);
-		Task DeletePatientById(int id);
+		Task DeletePatientById(int? id);
 	}
 }

@@ -1,4 +1,5 @@
-﻿using HospitalCrud.Util;
+﻿using HospitalCrud.ExtensionMethods;
+using HospitalCrud.Util;
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
 
@@ -14,6 +15,7 @@ namespace HospitalCrud.Validators
 
 		public CpfNumber() : base(CpfLength)
 		{
+			MinimumLength = CpfLength;
 		}
 
 		public override bool IsValid(object value)
@@ -22,15 +24,14 @@ namespace HospitalCrud.Validators
 				return true;
 
 			if (value is string cpf)
-				return IsCpf(cpf);
+				return IsValidCpf(cpf);
 
 			return false;
 		}
 
-		private bool IsCpf(string cpf)
+		private bool IsValidCpf(string cpf)
 		{
-			cpf = cpf.Trim();
-			cpf = cpf.Replace(".", "").Replace("-", "");
+			cpf = cpf.Trim().Replace(".", "").Replace("-", "");
 
 			if (cpf.Length != CpfLength)
 			{
@@ -38,7 +39,7 @@ namespace HospitalCrud.Validators
 				return false;
 			}
 
-			if (!Regex.IsMatch(cpf, @"^\d{11}$"))
+			if (!cpf.AllCharactersAreDigits() || cpf.AllCharactersAreTheSame())
 			{
 				ErrorMessage = ValidationMessages.InvalidCpfFormat;
 				return false;

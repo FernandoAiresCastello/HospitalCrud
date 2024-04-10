@@ -2,7 +2,11 @@
 using HospitalCrud.Exceptions;
 using HospitalCrud.Model;
 using HospitalCrud.Services;
+using HospitalCrud.Util;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using Swashbuckle.AspNetCore.Filters;
 
 namespace HospitalCrud.Controllers
 {
@@ -32,6 +36,7 @@ namespace HospitalCrud.Controllers
         /// <returns>The JSON of the created patient.</returns>
         /// <exception cref="DuplicateCpfException">Thrown if there is already a patient with the specified id</exception>
         [HttpPost]
+		[SwaggerRequestExample(typeof(Patient), typeof(PatientExample))]
 		public async Task<IActionResult> AddNewPatient([FromBody] Patient patientToAdd)
 		{
 			if (!ModelState.IsValid)
@@ -41,27 +46,31 @@ namespace HospitalCrud.Controllers
 			{
 				var createdPatient = await patientService.AddNewPatient(patientToAdd);
 
-				return Ok($"Novo paciente inserido com sucesso. Id: {createdPatient.Id}");
+				return Success($"Novo paciente inserido com sucesso. Id: {createdPatient.Id}");
 			}
 			catch (InvalidOperationException ex)
 			{
 				ModelState.AddModelError("Id", ex.Message);
 				return BadRequest(ModelState);
 			}
-			catch (InvalidDateOfBirthException ex)
-			{
-                ModelState.AddModelError("DateOfBirth", ex.Message);
-                return BadRequest(ModelState);
-            }
-            catch (DuplicateCpfException ex)
+			catch (DuplicateCpfException ex)
 			{
 				ModelState.AddModelError("Cpf", ex.Message);
 				return BadRequest(ModelState);
 			}
+			catch (ValueTooLongException ex)
+			{
+				ModelState.AddModelError(string.Empty, ex.Message);
+				return BadRequest(ModelState);
+			}
+			catch (DbUpdateException ex)
+			{
+				ModelState.AddModelError(string.Empty, ex.InnerException?.Message ?? ex.Message);
+				return BadRequest(ModelState);
+			}
 			catch (Exception ex)
 			{
-				return StatusCode(StatusCodes.Status500InternalServerError, 
-					$"Ocorreu um erro inesperado ao cadastrar um novo paciente: {ex.Message}");
+				return UnexpectedError(ex);
 			}
 		}
 
@@ -80,8 +89,7 @@ namespace HospitalCrud.Controllers
 			}
 			catch (Exception ex)
 			{
-				return StatusCode(StatusCodes.Status500InternalServerError,
-					$"Ocorreu um erro inesperado ao buscar lista com todos os pacientes: {ex.Message}");
+				return UnexpectedError(ex);
 			}
 		}
 
@@ -107,8 +115,7 @@ namespace HospitalCrud.Controllers
 			}
 			catch (Exception ex)
 			{
-				return StatusCode(StatusCodes.Status500InternalServerError,
-					$"Ocorreu um erro inesperado ao buscar paciente pelo id: {ex.Message}");
+				return UnexpectedError(ex);
 			}
 		}
 
@@ -134,8 +141,7 @@ namespace HospitalCrud.Controllers
 			}
 			catch (Exception ex)
 			{
-				return StatusCode(StatusCodes.Status500InternalServerError,
-					$"Ocorreu um erro inesperado ao buscar paciente pelo id: {ex.Message}");
+				return UnexpectedError(ex);
 			}
 		}
 
@@ -146,6 +152,7 @@ namespace HospitalCrud.Controllers
 		/// <exception cref="DuplicateCpfException">Thrown if there is already a patient with the specified id</exception>
 		/// <exception cref="MissingIdException">Thrown if the request body is missing the id field</exception>
 		[HttpPut]
+		[SwaggerRequestExample(typeof(Patient), typeof(PatientExample))]
 		public async Task<IActionResult> UpdatePatient([FromBody] PatientUpdateDTO patientUpdateDto)
 		{
 			if (!ModelState.IsValid)
@@ -153,20 +160,15 @@ namespace HospitalCrud.Controllers
 
 			try
 			{
-				await patientService.UpdatePatient(patientUpdateDto);
+				await patientService.UpdatePatientFromApi(patientUpdateDto);
 
-				return Ok($"Paciente id {patientUpdateDto.Id} foi atualizado com sucesso");
+				return Success($"Paciente id {patientUpdateDto.Id} foi atualizado com sucesso");
 			}
 			catch (PatientNotFoundException ex)
 			{
 				ModelState.AddModelError("Id", ex.Message);
 				return NotFound(ModelState);
 			}
-            catch (InvalidDateOfBirthException ex)
-            {
-                ModelState.AddModelError("DateOfBirth", ex.Message);
-                return BadRequest(ModelState);
-            }
             catch (DuplicateCpfException ex)
 			{
 				ModelState.AddModelError("Cpf", ex.Message);
@@ -177,10 +179,19 @@ namespace HospitalCrud.Controllers
 				ModelState.AddModelError("Id", ex.Message);
 				return BadRequest(ModelState);
 			}
+			catch (ValueTooLongException ex)
+			{
+				ModelState.AddModelError(string.Empty, ex.Message);
+				return BadRequest(ModelState);
+			}
+			catch (DbUpdateException ex)
+			{
+				ModelState.AddModelError(string.Empty, ex.InnerException?.Message ?? ex.Message);
+				return BadRequest(ModelState);
+			}
 			catch (Exception ex)
 			{
-				return StatusCode(StatusCodes.Status500InternalServerError,
-					$"Ocorreu um erro inesperado ao atualizar o paciente: {ex.Message}");
+				return UnexpectedError(ex);
 			}
 		}
 
@@ -196,7 +207,7 @@ namespace HospitalCrud.Controllers
 			{
 				await patientService.DeletePatientById(id);
 
-				return Ok($"Paciente id {id} foi deletado com sucesso");
+				return Success($"Paciente id {id} foi deletado com sucesso");
 			}
 			catch (PatientNotFoundException ex)
 			{
@@ -205,9 +216,22 @@ namespace HospitalCrud.Controllers
 			}
 			catch (Exception ex)
 			{
-				return StatusCode(StatusCodes.Status500InternalServerError,
-					$"Ocorreu um erro inesperado ao deletar o paciente pelo id: {ex.Message}");
+				return UnexpectedError(ex);
 			}
+		}
+
+		private OkObjectResult Success(string message)
+		{
+			return new OkObjectResult(new
+			{
+				resultado = "sucesso",
+				mensagem = message
+			});
+		}
+
+		private ObjectResult UnexpectedError(Exception ex)
+		{
+			return StatusCode(StatusCodes.Status500InternalServerError, $"Ocorreu um erro inesperado: {ex.Message}");
 		}
 	}
 }

@@ -1,10 +1,13 @@
 ﻿using HospitalCrud.Data;
 using HospitalCrud.JSONConverters;
+using HospitalCrud.Model;
 using HospitalCrud.Repositories;
 using HospitalCrud.Services;
+using HospitalCrud.Util;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.Filters;
 using System.Reflection;
 using System.Text.Json.Serialization;
 
@@ -45,7 +48,7 @@ namespace HospitalCrud
 		private void ConfigureJsonOptions(JsonOptions options)
 		{
             options.JsonSerializerOptions.Converters.Add(new DateTimeConverter());
-            options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+            options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
         }
 
         private void ConfigureApiBehaviorOptions(IServiceCollection services)
@@ -79,6 +82,7 @@ namespace HospitalCrud
 		{
 			services.AddTransient<IPatientRepository, PatientRepository>();
 			services.AddTransient<IPatientService, PatientService>();
+			services.AddTransient<IExamplesProvider<Patient>, PatientExample>();
 		}
 
 		private void RegisterDatabaseContext(IServiceCollection services, IConfigurationRoot appSetings)
@@ -105,15 +109,18 @@ namespace HospitalCrud
 
 		private void SetupSwaggerGenerator(IServiceCollection services)
 		{
-			services.AddSwaggerGen(setupAction =>
+			services.AddSwaggerGen(setup =>
 			{
-				setupAction.SwaggerDoc(ApiVersion, new OpenApiInfo { Title = ApiName, Version = ApiVersion });
+				setup.SwaggerDoc(ApiVersion, new OpenApiInfo { Title = ApiName, Version = ApiVersion });
 
 				var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
 				var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
 
-				setupAction.IncludeXmlComments(xmlPath);
+				setup.IncludeXmlComments(xmlPath);
+				setup.ExampleFilters();
 			});
+
+			services.AddSwaggerExamplesFromAssemblyOf<PatientExample>();
 		}
 
 		private WebApplication BuildWebApplication(WebApplicationBuilder builder)

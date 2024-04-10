@@ -1,4 +1,6 @@
 ﻿using HospitalCrud.JSONConverters;
+using HospitalCrud.Util;
+using HospitalCrud.Validators;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
@@ -10,14 +12,16 @@ namespace HospitalCrud.Model
 	/// </summary>
 	public class Patient
 	{
+		public const string UniqueCpfConstraint = "IX_Patient_Cpf";
+
 		[Key]
 		public int? Id { get; set; }
 
-		[Required(ErrorMessage = "Nome é obrigatório")]
+		[Required(ErrorMessage = ValidationMessages.RequiredFirstName)]
 		[StringLength(50)]
 		public string FirstName { get; set; } = "";
 
-		[Required(ErrorMessage = "Sobrenome é obrigatório")]
+		[Required(ErrorMessage = ValidationMessages.RequiredLastName)]
 		[StringLength(50)]
 		public string LastName { get; set; } = "";
 
@@ -25,18 +29,19 @@ namespace HospitalCrud.Model
 		[JsonIgnore]
         public string FullName => $"{FirstName} {LastName}";
 
-        [Required(ErrorMessage = "CPF é obrigatório")]
-        [StringLength(11, MinimumLength = 11, ErrorMessage = "Formato de CPF inválido. Necessário exatamente 11 dígitos.")]
-        public string? Cpf { get; set; } = null;
+		[Required(ErrorMessage = ValidationMessages.RequiredCpf)]
+		[CpfNumber]
+		public string? Cpf { get; set; } = null;
 
-		[EmailAddress(ErrorMessage = "Endereço de e-mail inválido")]
+		[EmailAddress(ErrorMessage = ValidationMessages.InvalidEmail)]
 		[StringLength(50)]
 		public string? Email { get; set; } = null;
 
-		[RegularExpression(@"^(\+55\s?)?(\(?\d{2}\)?\s?)?(\d{4,5}-?\d{4})$", ErrorMessage = "Formato de telefone inválido")]
+		[BrazilianPhoneNumber]
 		[StringLength(20)]
 		public string? Phone { get; set; } = null;
 
+		[DateOfBirth]
         [JsonConverter(typeof(DateTimeConverter))]
         public DateTime? DateOfBirth { get; set; } = null;
     }

@@ -5,6 +5,8 @@ using HospitalCrud.Repositories;
 using HospitalCrud.Util;
 using HospitalCrud.ExtensionMethods;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using HospitalCrud.Controllers;
 
 namespace HospitalCrud.Services
 {
@@ -24,7 +26,6 @@ namespace HospitalCrud.Services
 				if (patient.Id.HasValue)
 					throw new InvalidOperationException("Não é permitido informar o id ao cadastrar um novo paciente");
 
-				AssertValidDateOfBirthOrElseExcept(patient.DateOfBirth);
                 patient.DateOfBirth = patient.DateOfBirth.ToUtc();
 
                 await patientRepository.Add(patient);
@@ -33,17 +34,9 @@ namespace HospitalCrud.Services
 			}
 			catch (DbUpdateException ex)
 			{
-				if (PostgresExceptionIdentifier.IsUniqueConstraintViolationError(ex, "IX_Patient_Cpf"))
-					throw new DuplicateCpfException(patient.Cpf!);
-
+				IdentifyAndRethrowDbUpdateException(ex, patient);
 				throw;
 			}
-		}
-
-		private void AssertValidDateOfBirthOrElseExcept(DateTime? dateOfBirth)
-		{
-			if (!dateOfBirth.IsValidDateOfBirthOrNull())
-				throw new InvalidDateOfBirthException(dateOfBirth);
 		}
 
 		public async Task<ICollection<Patient>> GetAllPatients()
@@ -61,7 +54,15 @@ namespace HospitalCrud.Services
 			return await patientRepository.GetPatientByCpf(cpf);
 		}
 
-		public async Task UpdatePatient(Patient newData)
+		public async Task DeletePatientById(int id)
+		{
+			await patientRepository.Delete(id);
+		}
+
+		/// <summary>
+		/// This is the update method called by the view in <see cref="PatientController.Edit(Patient)"/>
+		/// </summary>
+		public async Task UpdatePatientFromView(Patient newData)
 		{
 			if (!newData.Id.HasValue)
 				throw new MissingIdException();
@@ -72,15 +73,16 @@ namespace HospitalCrud.Services
 			currentData.LastName = newData.LastName;
 			currentData.Phone = newData.Phone;
 			currentData.Email = newData.Email;
-			currentData.Cpf = newData.Cpf;
-
-			AssertValidDateOfBirthOrElseExcept(newData.DateOfBirth);
+			currentData.Cpf = newData.Cpf.KeepOnlyDigits();
 			currentData.DateOfBirth = newData.DateOfBirth.ToUtc();
 
-			await patientRepository.Update(currentData);
+			PerformUpdate(currentData);
 		}
 
-		public async Task UpdatePatient(PatientUpdateDTO dto)
+		/// <summary>
+		/// This is the update method called by the API in <see cref="PatientApiController.UpdatePatient(PatientUpdateDTO)"/>
+		/// </summary>
+		public async Task UpdatePatientFromApi(PatientUpdateDTO dto)
 		{
 			var patient = await GetPatientById(dto.Id);
 
@@ -93,20 +95,34 @@ namespace HospitalCrud.Services
 			if (dto.Email != null)
 				patient.Email = dto.Email;
 			if (dto.Cpf != null)
-				patient.Cpf = dto.Cpf;
-
+				patient.Cpf = dto.Cpf.KeepOnlyDigits();
             if (dto.DateOfBirth != null)
-            {
-                AssertValidDateOfBirthOrElseExcept(patient.DateOfBirth);
                 patient.DateOfBirth = dto.DateOfBirth.ToUtc();
-            }
 
-            await patientRepository.Update(patient);
+			PerformUpdate(patient);
 		}
 
-		public async Task DeletePatientById(int id)
+		private async void PerformUpdate(Patient patient)
 		{
-			await patientRepository.Delete(id);
+			try
+			{
+				await patientRepository.Update(patient);
+			}
+			catch (DbUpdateException ex)
+			{
+				IdentifyAndRethrowDbUpdateException(ex, patient);
+				throw;
+			}
+		}
+
+		private void IdentifyAndRethrowDbUpdateException(DbUpdateException ex, Patient? patient = null)
+		{
+			if (PostgresExceptionIdentifier.IsValueTooLongException(ex))
+				throw new ValueTooLongException(ex.InnerException!.Message);
+			if (PostgresExceptionIdentifier.IsUniqueConstraintViolationError(ex, Patient.UniqueCpfConstraint))
+				throw new DuplicateCpfException(patient.Cpf!);
+			if (PostgresExceptionIdentifier.IsUndefinedTable(ex))
+				throw new UndefinedTableException(ex);
 		}
 	}
 }

@@ -1,7 +1,9 @@
 ﻿using HospitalCrud.Data;
 using HospitalCrud.Exceptions;
 using HospitalCrud.Model;
+using HospitalCrud.Util;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace HospitalCrud.Repositories
 {
@@ -55,7 +57,17 @@ namespace HospitalCrud.Repositories
 		/// <inheritdoc/>
 		public async Task<ICollection<Patient>> GetAll()
 		{
-			return await db.Patients.ToListAsync();
+			try
+			{
+				return await db.Patients.ToListAsync();
+			}
+			catch (NpgsqlException ex)
+			{
+				if (PostgresExceptionIdentifier.IsUndefinedTable(ex))
+					throw new UndefinedTableException(ex);
+			}
+
+			return new List<Patient>();
 		}
 
 		/// <summary>

@@ -42,10 +42,6 @@ namespace HospitalCrud.Controllers
 
 					return RedirectToAction(nameof(List));
 				}
-                catch (InvalidDateOfBirthException ex)
-                {
-                    ModelState.AddModelError("DateOfBirth", ex.Message);
-                }
                 catch (DuplicateCpfException ex)
                 {
                     ModelState.AddModelError("CPF", ex.Message);
@@ -81,17 +77,17 @@ namespace HospitalCrud.Controllers
             {
 				try
 				{
-					await patientService.UpdatePatient(patient);
+					await patientService.UpdatePatientFromView(patient);
 
 					return RedirectToAction(nameof(List));
-				}
-				catch (InvalidDateOfBirthException ex)
-				{
-					ModelState.AddModelError("DateOfBirth", ex.Message);
 				}
 				catch (DuplicateCpfException ex)
 				{
 					ModelState.AddModelError("CPF", ex.Message);
+				}
+				catch (ValueTooLongException ex)
+				{
+					ModelState.AddModelError(string.Empty, ex.Message);
 				}
 				catch (DbUpdateException ex)
 				{

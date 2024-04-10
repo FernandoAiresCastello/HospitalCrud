@@ -12,8 +12,8 @@ namespace HospitalCrud.Services
 		Task<ICollection<Patient>> GetAllPatients();
 		Task<Patient> GetPatientById(int id);
 		Task<Patient> GetPatientByCpf(string cpf);
-		Task UpdatePatient(PatientUpdateDTO dto);
-		Task UpdatePatient(Patient patient);
+		Task UpdatePatientFromApi(PatientUpdateDTO dto);
+		Task UpdatePatientFromView(Patient patient);
 		Task DeletePatientById(int id);
 	}
 }
